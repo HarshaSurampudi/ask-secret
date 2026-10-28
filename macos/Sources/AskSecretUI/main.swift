@@ -1,13 +1,21 @@
 import AppKit
 import SwiftUI
 
-// Parse first so usage errors never open a window.
+// The popup half of ask-secret. It reads a JSON spec on stdin and writes the answers
+// as JSON on stdout to the `ask-secret` process that started it. It stores nothing.
+
 let spec: Spec
 do {
-    spec = try parseArguments(Array(CommandLine.arguments.dropFirst()))
+    spec = try JSONDecoder().decode(Spec.self, from: FileHandle.standardInput.readDataToEndOfFile())
 } catch {
-    FileHandle.standardError.write(Data("\(error)\n".utf8))
+    FileHandle.standardError.write(Data("ask-secret-ui: bad spec on stdin: \(error)\n".utf8))
     exit(2)
+}
+
+func emit(_ object: [String: Any]) {
+    let data = (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
+    FileHandle.standardOutput.write(data)
+    FileHandle.standardOutput.write(Data("\n".utf8))
 }
 
 final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -22,7 +30,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let root = SecretForm(model: model) { [weak self] outcome in self?.finish(outcome) }
         let hosting = NSHostingController(rootView: root)
-        // Track SwiftUI's preferred size, so the panel grows when a hint appears.
+        // Track SwiftUI's preferred size, so the panel grows when a warning appears.
         hosting.sizingOptions = [.preferredContentSize]
         let size = hosting.sizeThatFits(in: NSSize(width: 500, height: 10_000))
 
@@ -45,28 +53,23 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.activate(ignoringOtherApps: true)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + model.spec.timeout) { [weak self] in
-            self?.finish(.cancelled("cancelled (timed out)"))
+            self?.finish(.cancelled("timed out"))
         }
     }
 
     func windowWillClose(_ notification: Notification) {
-        finish(.cancelled("cancelled"))
+        finish(.cancelled(""))
     }
 
     func finish(_ outcome: Outcome) {
         guard !finished else { return }
         finished = true
         switch outcome {
-        case .saved(let report):
-            for field in model.spec.fields {
-                print("\(field.key): \(report[field.key] ?? "skipped")")
-            }
-            print("destination: \(model.spec.destination.display)")
-            fflush(stdout)
+        case .saved(let answers):
+            emit(["status": "saved", "fields": answers])
             exit(0)
         case .cancelled(let why):
-            print(why)
-            fflush(stdout)
+            emit(["status": "cancelled", "reason": why])
             exit(1)
         }
     }
