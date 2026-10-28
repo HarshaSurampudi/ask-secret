@@ -12,14 +12,25 @@ ask-secret run -- npm run dev        # key injected, and shown as •••• i
 ## Install
 
 ```sh
+curl -fsSL https://raw.githubusercontent.com/HarshaSurampudi/ask-secret/main/install.sh | sh
+```
+
+It downloads the build for your machine (a universal binary for Apple Silicon and Intel
+Macs with the popup included, or a static binary for x86_64 or arm64 Linux that runs on any
+distro), checks its SHA-256, and installs it to `~/.local/bin`. It then asks whether to
+set up Claude Code and Codex (see below). Options are environment variables:
+`ASK_SECRET_VERSION=v0.2.0`, `ASK_SECRET_INSTALL_DIR=/usr/local/bin`, `ASK_SECRET_NO_SETUP=1`.
+
+Linux has no popup: ask-secret asks in the terminal, or you send secrets from
+another machine with `ask-secret push`. Windows isn't supported yet.
+
+From source:
+
+```sh
 cargo build --release
 (cd macos && swift build -c release)        # the popup; macOS only
 install -m 755 target/release/ask-secret macos/.build/release/ask-secret-ui ~/.local/bin/
-ask-secret setup                            # teach your coding agents to use it
 ```
-
-On Linux, skip the popup. ask-secret then asks in the terminal, or you can send secrets
-from another machine with `ask-secret push`.
 
 ## Teaching your agents: `ask-secret setup`
 
