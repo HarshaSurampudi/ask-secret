@@ -8,6 +8,7 @@ mod mask;
 mod project;
 mod prompt;
 mod remote;
+mod setup;
 mod vault;
 
 use std::collections::BTreeMap;
@@ -111,6 +112,21 @@ enum Cmd {
         /// Store them under a different project name on HOST
         #[arg(long)]
         to: Option<String>,
+    },
+    /// Add the agent rules to Claude Code's and Codex's global instructions
+    Setup {
+        /// Apply without asking
+        #[arg(long)]
+        yes: bool,
+        /// Take the rules out again
+        #[arg(long)]
+        remove: bool,
+        /// Only print the rules
+        #[arg(long)]
+        print: bool,
+        /// Use this instructions file instead of detecting agents (e.g. a repo's AGENTS.md)
+        #[arg(long)]
+        file: Vec<PathBuf>,
     },
     #[command(hide = true)]
     Receive,
@@ -217,6 +233,7 @@ fn dispatch(cmd: Cmd) -> Result<u8> {
             remote::push(&host, project.as_deref(), to.as_deref(), &keys)?;
             Ok(0)
         }
+        Cmd::Setup { yes, remove, print, file } => setup::run(&file, remove, yes, print),
         Cmd::Receive => {
             remote::receive()?;
             Ok(0)

@@ -9,6 +9,37 @@ ask-secret ask --field OPENAI_API_KEY --help "From platform.openai.com/api-keys"
 ask-secret run -- npm run dev        # key injected, and shown as •••• in output
 ```
 
+## Install
+
+```sh
+cargo build --release
+(cd macos && swift build -c release)        # the popup; macOS only
+install -m 755 target/release/ask-secret macos/.build/release/ask-secret-ui ~/.local/bin/
+ask-secret setup                            # teach your coding agents to use it
+```
+
+On Linux, skip the popup. ask-secret then asks in the terminal, or you can send secrets
+from another machine with `ask-secret push`.
+
+## Teaching your agents: `ask-secret setup`
+
+Agents only follow rules they actually read. Skills and docs are read when the model
+decides they're relevant, which isn't reliable, so `setup` puts a short rules block into
+the instructions each agent loads in **every** session:
+
+- **Claude Code**: `~/.claude/CLAUDE.md` (or under `CLAUDE_CONFIG_DIR`)
+- **Codex**: `~/.codex/AGENTS.md` (or under `CODEX_HOME`). If you use
+  `AGENTS.override.md`, the rules go there, because Codex then ignores `AGENTS.md`.
+
+It shows what it will change and asks first. The block is marked, so running `setup`
+again updates it in place and `ask-secret setup --remove` takes it out, leaving the
+rest of your file untouched. Other options:
+
+- `--file AGENTS.md`: write to a specific file instead, such as a repo's `AGENTS.md`
+  (this is the way to set up Cursor, which has no global rules file).
+- `--print`: just print the rules.
+- `--yes`: apply without asking.
+
 ## What it does
 
 - **Projects by name.** Secrets belong to the project named after the git repo (or
@@ -44,12 +75,3 @@ Set `ASK_SECRET_HOME` / `ASK_SECRET_KEY_FILE` to move them.
 - `macos/`: `ask-secret-ui`, the SwiftUI popup. It reads a JSON spec on stdin and writes
   the answers to stdout, and stores nothing itself. Without it (Linux, or `ASK_SECRET_TTY=1`) the
   CLI asks in the terminal.
-- `skill/ask-secret/`: an agent skill that teaches the rules and commands.
-
-## Build
-
-```sh
-cargo build --release
-(cd macos && swift build -c release)
-install -m 755 target/release/ask-secret macos/.build/release/ask-secret-ui ~/.local/bin/
-```
